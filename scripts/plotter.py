@@ -81,12 +81,14 @@ def calculate_and_write_reports():
 
 def show_text_reports():
     """
-    Reads all timing and resource logs and displays them in a formatted text window.
+    Reads all timing, resource, and analysis logs and displays them in a formatted text window.
     """
     try:
+        # --- Section 1: Precision Error Report ---
         with open(os.path.join(DATA_DIR, 'precision_metrics.log'), 'r') as f:
             precision_report = f.read()
         
+        # --- Section 2: Timing Comparison Report ---
         df_d_time = pd.read_csv(os.path.join(DATA_DIR, 'timing_log_d.csv')).set_index('method')
         df_ld_time = pd.read_csv(os.path.join(DATA_DIR, 'timing_log_ld.csv')).set_index('method')
         try:
@@ -111,6 +113,7 @@ def show_text_reports():
 
             timing_report += f"{method:<25} {time_d_str:>22} {time_ld_str:>20} {time_mpfr_str:>28}\n"
 
+        # --- Section 3: Resource Usage Report ---
         resource_report = "\n--- Resource Usage (Summary) ---\n"
         for precision, label in [('d', 'Standard Precision'), ('ld', 'High Precision'), ('mpfr', f'Arbitrary Precision ({MPFR_BITS}-bit)')]:
             try:
@@ -122,12 +125,50 @@ def show_text_reports():
             except (FileNotFoundError, IndexError):
                  resource_report += f"-> {label}: Resource file not found or incomplete.\n"
 
+        # --- Section 4: Gaussian Similarity Analysis (NEW) ---
+        gaussian_report = "\n--- Gaussian Similarity Analysis (K-S Test @ α=0.05) ---\n"
+        gaussian_report += "Based on the Kolmogorov-Smirnov test, the PSD distributions for the following noise levels are:\n\n"
+        try:
+            realizations_df = pd.read_csv(os.path.join(DATA_DIR, 'psd_realizations.csv'))
+            sigmas = realizations_df['sigma'].unique()
+            
+            gaussian_like = []
+            non_gaussian_like = []
+
+            for sigma_val in sigmas:
+                data = realizations_df[realizations_df['sigma'] == sigma_val]['psd_value']
+                if len(data) > 20:
+                    # Normalize the data to have zero mean and unit variance for K-S test against 'norm'
+                    z_scores = (data - data.mean()) / data.std()
+                    _, p_value = stats.kstest(z_scores, 'norm')
+                    if p_value > 0.05:
+                        gaussian_like.append(f"  - Sigma = {sigma_val:<5.2f} (p-value = {p_value:.4f})")
+                    else:
+                        non_gaussian_like.append(f"  - Sigma = {sigma_val:<5.2f} (p-value = {p_value:.4f})")
+            
+            gaussian_report += "*   Consistent with a Gaussian Distribution (p > 0.05):\n"
+            if gaussian_like:
+                gaussian_report += "\n".join(gaussian_like) + "\n"
+            else:
+                gaussian_report += "      None\n"
+
+            gaussian_report += "\n*   NOT Consistent with a Gaussian Distribution (p <= 0.05):\n"
+            if non_gaussian_like:
+                gaussian_report += "\n".join(non_gaussian_like) + "\n"
+            else:
+                gaussian_report += "      None\n"
+
+        except Exception as e:
+            gaussian_report += f"Could not perform analysis: {e}\n"
+
+
+        # --- Final Assembly and Display ---
         instruction = "\n\n--- NOTE: Close this window to show interactive plots. ---"
         root = tk.Tk()
         root.title("Performance and Precision Report")
-        st = scrolledtext.ScrolledText(root, wrap=tk.WORD, font=("Monospace", 10), width=115, height=35)
+        st = scrolledtext.ScrolledText(root, wrap=tk.WORD, font=("Monospace", 10), width=115, height=45)
         st.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
-        full_report = f"{precision_report}\n{timing_report}\n{resource_report}\n{instruction}"
+        full_report = f"{precision_report}\n{timing_report}\n{resource_report}\n{gaussian_report}\n{instruction}"
         st.insert(tk.INSERT, full_report)
         st.configure(state='disabled')
         root.mainloop()
