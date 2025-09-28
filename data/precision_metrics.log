@@ -1,0 +1,9 @@
+--- Precision Error Metrics ---
+
+--- Mean Squared Error (MSE) vs. Ideal Signal ---
+Method                        MSE (Standard Precision)      MSE (High Precision)     MSE (Arbitrary - 4096-bit)
+----------------------------------------------------------------------------------------------------------------
+Periodogram (Rect)                          1.5463e-04                1.6657e-04                     1.5331e-04
+Periodogram (Hamming)                       2.5165e-04                2.5690e-04                     2.4432e-04
+Multitaper                                  5.4072e-04                5.3969e-04                     5.3973e-04
+Welch                                       2.0178e-03                2.0151e-03                     2.0112e-03

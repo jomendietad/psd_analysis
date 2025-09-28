@@ -1,0 +1,5 @@
+method,total_cpu_time_s,avg_cpu_time_per_realization_ms
+Periodogram,0.015698,0.156982
+Periodogram (Hamming),0.015139,0.151388
+Multitaper,0.106621,1.066206
+Welch,0.048871,0.488711
